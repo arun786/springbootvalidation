@@ -97,3 +97,111 @@ use of @valid
             return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
     }
+
+
+# Custom Validator
+
+To check if the from date is greater than to date
+
+    package com.arun.springbootvalidation.annotation;
+    
+    import org.apache.tomcat.jni.Local;
+    
+    import javax.validation.Constraint;
+    import javax.validation.Payload;
+    import java.lang.annotation.*;
+    import java.time.LocalDate;
+    
+    @Constraint(validatedBy = DateValidator.class)
+    @Documented
+    @Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface DateMatch {
+    
+        String message() default "To date is less than From date";
+    
+        Class<?>[] groups() default {};
+    
+        Class<? extends Payload>[] payload() default {};
+    
+        String fromDate();
+    
+        String toDate();
+    
+    
+        @Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
+        @Retention(RetentionPolicy.RUNTIME)
+        @Documented
+        @interface List {
+            DateMatch[] value();
+        }
+    }
+    
+
+    package com.arun.springbootvalidation.annotation;
+    
+    
+    import javax.validation.ConstraintValidator;
+    import javax.validation.ConstraintValidatorContext;
+    import java.time.LocalDate;
+    import java.time.format.DateTimeFormatter;
+    
+    import static org.apache.commons.beanutils.PropertyUtils.getProperty;
+    
+    public class DateValidator implements ConstraintValidator<DateMatch, Object> {
+    
+        private String fromDate;
+        private String toDate;
+    
+        @Override
+        public boolean isValid(Object o, ConstraintValidatorContext constraintValidatorContext) {
+    
+            try {
+                Object firstDate = getProperty(o, this.fromDate);
+                Object toDate = getProperty(0, this.toDate);
+    
+                LocalDate localFromDate = LocalDate.parse(String.valueOf(firstDate), DateTimeFormatter.ofPattern("mm/dd/yyyy"));
+                LocalDate localToDate = LocalDate.parse(String.valueOf(toDate), DateTimeFormatter.ofPattern("mm/dd/yyyy"));
+                return localFromDate.isAfter(localToDate);
+            } catch (Exception e) {
+                return false;
+            }
+    
+        }
+    
+        @Override
+        public void initialize(DateMatch constraintAnnotation) {
+            fromDate = constraintAnnotation.fromDate();
+            toDate = constraintAnnotation.toDate();
+    
+        }
+    }
+
+    
+    package com.arun.springbootvalidation.model;
+    
+    import com.arun.springbootvalidation.annotation.DateMatch;
+    import lombok.AllArgsConstructor;
+    import lombok.Getter;
+    import lombok.NoArgsConstructor;
+    import lombok.Setter;
+    
+    import javax.validation.constraints.NotEmpty;
+    import javax.validation.constraints.PastOrPresent;
+    import java.time.LocalDate;
+    
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @DateMatch(fromDate = "fromDate", toDate = "toDate", message = "from date should not be greater than to date")
+    public class Student {
+        private String studentId;
+        @NotEmpty(message = "Name cannot be empty")
+        private String name;
+        private String age;
+        @PastOrPresent(message = "from Date cannot be future date")
+        private LocalDate fromDate;
+        @PastOrPresent(message = "to date cannot be past date")
+        private LocalDate toDate;
+    }
