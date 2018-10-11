@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 public class StudentController {
@@ -23,7 +24,7 @@ public class StudentController {
 
 
     @PostMapping("/students/v1/student")
-    public ResponseEntity<Student> getStudent(@Valid @RequestBody Student student) {
+    public ResponseEntity<Student> getStudent(@Valid @RequestBody List<Student> student) {
         Student response = studentService.createStudent(student);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

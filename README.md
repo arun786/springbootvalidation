@@ -137,45 +137,40 @@ To check if the from date is greater than to date
         }
     }
     
+# DateMatch
 
     package com.arun.springbootvalidation.annotation;
     
+    import javax.validation.Constraint;
+    import javax.validation.Payload;
+    import java.lang.annotation.*;
     
-    import javax.validation.ConstraintValidator;
-    import javax.validation.ConstraintValidatorContext;
-    import java.time.LocalDate;
-    import java.time.format.DateTimeFormatter;
+    @Constraint(validatedBy = DateValidator.class)
+    @Documented
+    @Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface DateMatch {
     
-    import static org.apache.commons.beanutils.PropertyUtils.getProperty;
+        String message() default "To date is less than From date";
     
-    public class DateValidator implements ConstraintValidator<DateMatch, Object> {
+        Class<?>[] groups() default {};
     
-        private String fromDate;
-        private String toDate;
+        Class<? extends Payload>[] payload() default {};
     
-        @Override
-        public boolean isValid(Object o, ConstraintValidatorContext constraintValidatorContext) {
+        String fromDate();
     
-            try {
-                Object firstDate = getProperty(o, this.fromDate);
-                Object toDate = getProperty(0, this.toDate);
+        String toDate();
     
-                LocalDate localFromDate = LocalDate.parse(String.valueOf(firstDate), DateTimeFormatter.ofPattern("mm/dd/yyyy"));
-                LocalDate localToDate = LocalDate.parse(String.valueOf(toDate), DateTimeFormatter.ofPattern("mm/dd/yyyy"));
-                return localFromDate.isAfter(localToDate);
-            } catch (Exception e) {
-                return false;
-            }
     
-        }
-    
-        @Override
-        public void initialize(DateMatch constraintAnnotation) {
-            fromDate = constraintAnnotation.fromDate();
-            toDate = constraintAnnotation.toDate();
-    
+        @Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
+        @Retention(RetentionPolicy.RUNTIME)
+        @Documented
+        @interface List {
+            DateMatch[] value();
         }
     }
+    
+
 
     
     package com.arun.springbootvalidation.model;
@@ -213,13 +208,15 @@ To check if the from date is greater than to date
     import org.springframework.http.HttpHeaders;
     import org.springframework.http.HttpStatus;
     import org.springframework.http.ResponseEntity;
-    import org.springframework.validation.FieldError;
     import org.springframework.validation.ObjectError;
     import org.springframework.web.bind.MethodArgumentNotValidException;
     import org.springframework.web.bind.annotation.ControllerAdvice;
     import org.springframework.web.bind.annotation.RestController;
     import org.springframework.web.context.request.WebRequest;
     import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+    
+    import java.util.ArrayList;
+    import java.util.List;
     
     @ControllerAdvice
     @RestController
@@ -228,9 +225,13 @@ To check if the from date is greater than to date
     
         @Override
         protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
-            ObjectError globalError = ex.getBindingResult().getGlobalError();
-            FieldError fieldError = ex.getBindingResult().getFieldError();
-            Error error = new Error(String.valueOf(HttpStatus.BAD_REQUEST), fieldError != null ? fieldError.getDefaultMessage() : globalError.getDefaultMessage());
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+            List<ObjectError> allErrors = ex.getBindingResult().getAllErrors();
+            List<Error> errorList = new ArrayList<>();
+            allErrors.forEach(error -> {
+                Error errors = new Error(String.valueOf(HttpStatus.BAD_REQUEST), error.getDefaultMessage());
+                errorList.add(errors);
+            });
+    
+            return new ResponseEntity<>(errorList, HttpStatus.BAD_REQUEST);
         }
     }
